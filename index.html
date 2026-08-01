@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>LOGIQ Downloader</title>
+<style>
+  :root{
+    --bg:#0f1620; --card:#18222e; --ink:#eaf0f6; --dim:#9fb0c0;
+    --green:#27ae60; --red:#c0392b; --blue:#2980b9; --amber:#d68910; --line:#2a3644;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#f2f5f8; --card:#ffffff; --ink:#1a2733; --dim:#5b6b7a; --line:#dbe2e9; }
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; font-family:-apple-system,'Helvetica Neue',Arial,sans-serif; background:var(--bg); color:var(--ink);
+       padding:16px; padding-bottom:40px; line-height:1.45;}
+  .wrap{max-width:560px; margin:0 auto;}
+  h1{font-size:22px; margin:6px 0 2px; font-weight:800; letter-spacing:.3px;}
+  .sub{color:var(--dim); font-size:13px; margin:0 0 16px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin:12px 0;}
+  button{width:100%; border:0; border-radius:12px; padding:16px; font-size:17px; font-weight:700; color:#fff;
+         margin:8px 0; cursor:pointer; transition:opacity .15s; -webkit-appearance:none;}
+  button:active{opacity:.75;} button:disabled{opacity:.4;}
+  .b-green{background:var(--green);} .b-blue{background:var(--blue);} .b-red{background:var(--red);}
+  .status{display:flex; align-items:center; gap:10px; font-size:14px; margin:4px 0 2px;}
+  .dot{width:11px; height:11px; border-radius:50%; background:#7f8c8d; flex:0 0 auto;}
+  .dot.on{background:var(--green);} .dot.busy{background:var(--amber);} .dot.err{background:var(--red);}
+  .log{font-size:12.5px; color:var(--dim); white-space:pre-wrap; word-break:break-word; margin-top:8px;
+       max-height:150px; overflow:auto;}
+  .bar{height:10px; background:var(--line); border-radius:6px; overflow:hidden; margin:12px 0 6px; display:none;}
+  .bar > i{display:block; height:100%; width:0%; background:var(--blue); transition:width .1s;}
+  .result{display:none;}
+  .stats{display:flex; gap:8px; margin:8px 0;}
+  .stat{flex:1; background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:10px 4px; text-align:center;}
+  .stat b{display:block; font-size:17px; color:var(--green);} .stat span{font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.4px;}
+  .hint{font-size:12.5px; color:var(--dim); background:var(--bg); border-left:3px solid var(--amber);
+        border-radius:0 8px 8px 0; padding:9px 12px; margin:10px 0;}
+  code{background:var(--bg); padding:1px 5px; border-radius:5px; font-size:12px;}
+  ol{padding-left:20px; font-size:13.5px; color:var(--dim);} ol li{margin:4px 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>LOGIQ&nbsp;Downloader</h1>
+  <p class="sub">Scarica i dati dalla XIAO via Bluetooth &mdash; tutto dal telefono.</p>
+
+  <div class="card">
+    <div class="status"><span id="dot" class="dot"></span><span id="state">Non connesso</span></div>
+    <button id="btnConnect" class="b-green">Connetti alla XIAO</button>
+    <button id="btnDownload" class="b-blue" disabled>Scarica dati</button>
+    <div class="bar" id="bar"><i id="barFill"></i></div>
+
+    <div class="result card" id="result" style="margin:12px 0 0;">
+      <div class="stats">
+        <div class="stat"><b id="stSamples">&ndash;</b><span>campioni</span></div>
+        <div class="stat"><b id="stDur">&ndash;</b><span>durata</span></div>
+        <div class="stat"><b id="stMag">&ndash;</b><span>|a| medio</span></div>
+      </div>
+      <button id="btnSave" class="b-green">Salva / Condividi CSV</button>
+      <button id="btnErase" class="b-red">Azzera memoria (E)</button>
+    </div>
+
+    <div class="log" id="log"></div>
+  </div>
+
+  <div class="hint">Durante lo scarico, sulla XIAO il <b>LED blu lampeggia</b>; si spegne a fine download.</div>
+
+  <div class="card">
+    <b style="font-size:14px;">Come si usa</b>
+    <ol>
+      <li>XIAO <b>accesa a batteria</b> (switch ON) e <b>scollegata dal Mac</b>.</li>
+      <li><b>Connetti</b> &rarr; scegli <code>LOGIQ-log</code>.</li>
+      <li><b>Scarica dati</b> &rarr; attendi la barra.</li>
+      <li><b>Salva / Condividi</b> il CSV (in File, o invialo dove vuoi).</li>
+      <li>Se vuoi liberare la memoria per la prossima sessione: <b>Azzera</b>.</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+const NUS = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const RX  = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // scrittura telefono->scheda
+const TX  = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // notifiche scheda->telefono
+const SCALE = 8.0/32768.0, GAP = 0x7FFF;
+
+let device=null, rxChar=null, txChar=null;
+let lastCSV=null, lastName=null;
+
+const $ = id => document.getElementById(id);
+function log(m){ const el=$('log'); el.textContent += (el.textContent?'\n':'') + m; el.scrollTop = el.scrollHeight; }
+function setState(txt, cls){ $('state').textContent = txt; $('dot').className = 'dot' + (cls?(' '+cls):''); }
+
+if(!navigator.bluetooth){
+  setState('Bluetooth non disponibile', 'err');
+  log('Questo browser non supporta il Web Bluetooth. Su iPhone usa l\'app "Bluefy".');
+  $('btnConnect').disabled = true;
+}
+
+// ---------- Connessione ----------
+$('btnConnect').onclick = async () => {
+  try{
+    setState('Ricerca…', 'busy'); log('Cerco LOGIQ-log…');
+    device = await navigator.bluetooth.requestDevice({
+      filters:[{name:'LOGIQ-log'}], optionalServices:[NUS]
+    });
+    device.addEventListener('gattserverdisconnected', onDisconnect);
+    log('Connessione a ' + device.name + '…');
+    const server = await device.gatt.connect();
+    const svc = await server.getPrimaryService(NUS);
+    rxChar = await svc.getCharacteristic(RX);
+    txChar = await svc.getCharacteristic(TX);
+    await txChar.startNotifications();
+    txChar.addEventListener('characteristicvaluechanged', onNotify);
+    setState('Connesso: ' + device.name, 'on');
+    log('Connesso. Pronto per lo scarico.');
+    $('btnDownload').disabled = false;
+    $('btnConnect').textContent = 'Riconnetti';
+  }catch(e){
+    setState('Connessione fallita', 'err'); log('Errore: ' + e.message);
+  }
+};
+
+function onDisconnect(){
+  setState('Disconnesso', 'err'); log('La XIAO si è disconnessa.');
+  $('btnDownload').disabled = true; $('btnConnect').textContent = 'Connetti alla XIAO';
+}
+
+async function sendCmd(ch){
+  const data = new TextEncoder().encode(ch);
+  try{ await rxChar.writeValueWithoutResponse(data); }
+  catch(_){ await rxChar.writeValue(data); }
+}
+
+// ---------- Ricezione ----------
+let rx = { active:false, chunks:[], total:0, header:null, nBytes:0, fs:833, payloadStart:0,
+           resolve:null, reject:null, stallTimer:null };
+
+function onNotify(ev){
+  if(!rx.active) return;
+  const bytes = new Uint8Array(ev.target.value.buffer);
+  rx.chunks.push(bytes); rx.total += bytes.length;
+  armStall();
+
+  // Parse header "# BEGIN <n> <fs>\n" finché non trovato
+  if(rx.header === null){
+    const buf = concat(rx.chunks, rx.total);
+    const nl = buf.indexOf(0x0A);
+    if(nl >= 0){
+      const line = new TextDecoder().decode(buf.slice(0, nl)).trim();
+      if(line.startsWith('# BEGIN')){
+        const p = line.split(/\s+/);
+        rx.nBytes = parseInt(p[2],10); rx.fs = parseFloat(p[3])||833;
+        rx.header = line; rx.payloadStart = nl + 1;
+        // ricompatta tutto in un solo buffer per comodità
+        rx.chunks = [buf]; rx.total = buf.length;
+        log('Ricevo ' + rx.nBytes + ' byte (~' + (rx.nBytes/6/rx.fs).toFixed(1) + 's)…');
+        $('bar').style.display='block';
+        if(rx.nBytes === 0){ finish(); return; }
+      } else {
+        log('Riga: ' + line);
+        // scarta la riga non-BEGIN e continua
+        rx.chunks = [buf.slice(nl+1)]; rx.total = rx.chunks[0].length;
+      }
+    }
+    if(rx.header === null) return;
+  }
+
+  const have = rx.total - rx.payloadStart;
+  if(have >= 0){
+    const pct = Math.min(100, Math.round(have / rx.nBytes * 100));
+    $('barFill').style.width = pct + '%';
+  }
+  if(have >= rx.nBytes) finish();
+}
+
+function concat(chunks, total){
+  const out = new Uint8Array(total); let o=0;
+  for(const c of chunks){ out.set(c, o); o += c.length; }
+  return out;
+}
+function armStall(){
+  clearTimeout(rx.stallTimer);
+  rx.stallTimer = setTimeout(()=>{ if(rx.active){ rx.active=false; rx.reject(new Error('nessun dato per 10s (stallo)')); } }, 10000);
+}
+
+// ---------- Scarica ----------
+$('btnDownload').onclick = async () => {
+  $('result').style.display='none'; $('log').textContent=''; $('barFill').style.width='0%';
+  setState('Scarico…', 'busy'); log('Invio comando D…');
+  try{
+    const payload = await new Promise(async (resolve,reject)=>{
+      rx = { active:true, chunks:[], total:0, header:null, nBytes:0, fs:833, payloadStart:0, resolve, reject, stallTimer:null };
+      armStall();
+      await sendCmd('D');
+    });
+    decodeAndShow(payload, rx.fs);
+    setState('Connesso: ' + device.name, 'on');
+  }catch(e){
+    setState('Scarico fallito', 'err'); log('Errore: ' + e.message);
+    clearTimeout(rx.stallTimer);
+  }
+};
+
+function finish(){
+  clearTimeout(rx.stallTimer); rx.active=false;
+  const buf = concat(rx.chunks, rx.total);
+  const payload = buf.slice(rx.payloadStart, rx.payloadStart + rx.nBytes);
+  $('barFill').style.width='100%';
+  log('Ricevuti ' + payload.length + '/' + rx.nBytes + ' byte.');
+  rx.resolve(payload);
+}
+
+// ---------- Decodifica -> CSV ----------
+function decodeAndShow(payload, fs){
+  const dv = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+  let n=0, gaps=0, sumMag=0;
+  let csv = 'seconds_elapsed,x,y,z\n';
+  const lines = [];
+  for(let off=0; off+6 <= payload.length; off+=6){
+    const x = dv.getInt16(off,   true);
+    const y = dv.getInt16(off+2, true);
+    const z = dv.getInt16(off+4, true);
+    if(x===GAP && y===GAP && z===GAP){ gaps++; continue; }
+    const gx=x*SCALE, gy=y*SCALE, gz=z*SCALE;
+    sumMag += Math.sqrt(gx*gx+gy*gy+gz*gz);
+    lines.push((n/fs).toFixed(6)+','+gx.toFixed(5)+','+gy.toFixed(5)+','+gz.toFixed(5));
+    n++;
+  }
+  csv += lines.join('\n') + '\n';
+  lastCSV = csv;
+  const ts = new Date();
+  const pad = v => String(v).padStart(2,'0');
+  lastName = 'logiq_' + ts.getFullYear()+pad(ts.getMonth()+1)+pad(ts.getDate())+'_'+pad(ts.getHours())+pad(ts.getMinutes())+pad(ts.getSeconds())+'.csv';
+
+  $('stSamples').textContent = n.toLocaleString('it-IT');
+  $('stDur').textContent = (n/fs).toFixed(1)+'s';
+  $('stMag').textContent = n? (sumMag/n).toFixed(3)+'g' : '–';
+  $('result').style.display='block';
+  log('CSV pronto: ' + n + ' campioni, ' + (n/fs).toFixed(1) + 's' + (gaps?(' , '+gaps+' gap'):'') + '.');
+}
+
+// ---------- Salva / Condividi ----------
+$('btnSave').onclick = async () => {
+  if(!lastCSV) return;
+  const blob = new Blob([lastCSV], {type:'text/csv'});
+  const file = new File([blob], lastName, {type:'text/csv'});
+  try{
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:lastName});
+      log('Condiviso: ' + lastName);
+      return;
+    }
+  }catch(e){ log('Condivisione annullata/non riuscita, provo il download.'); }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=lastName; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 1000);
+  log('Salvato: ' + lastName);
+};
+
+// ---------- Azzera ----------
+$('btnErase').onclick = async () => {
+  if(!confirm('Azzerare la memoria della XIAO? I dati non ancora salvati andranno persi.')) return;
+  try{ await sendCmd('E'); log('Comando E inviato: memoria azzerata, la scheda riparte a registrare.'); }
+  catch(e){ log('Errore azzeramento: ' + e.message); }
+};
+</script>
+</body>
+</html>

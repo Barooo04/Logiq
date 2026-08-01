@@ -90,6 +90,7 @@
     <div class="status"><span id="dot" class="dot"></span><span id="state">Non connesso</span><span id="batt" class="batt"></span></div>
     <button id="btnConnect" class="act b-green">Connetti alla XIAO</button>
     <button id="btnDownload" class="act b-blue" disabled>Scarica dati</button>
+    <button id="btnErase" class="act b-red" disabled>Azzera memoria (E)</button>
     <div class="bar" id="bar"><i id="barFill"></i></div>
 
     <div class="result card" id="result" style="margin:12px 0 0;">
@@ -99,7 +100,6 @@
         <div class="stat"><b id="stMag">&ndash;</b><span>|a| medio</span></div>
       </div>
       <button id="btnSave" class="act b-green">Condividi questo CSV</button>
-      <button id="btnErase" class="act b-red">Azzera memoria (E)</button>
     </div>
 
     <div class="log" id="log"></div>
@@ -245,13 +245,13 @@ $('btnConnect').onclick = async () => {
     txChar.addEventListener('characteristicvaluechanged', onNotify);
     setState('Connesso: ' + device.name, 'on');
     log('Connesso. Pronto per lo scarico.');
-    $('btnDownload').disabled = false; $('btnConnect').textContent = 'Riconnetti';
+    $('btnDownload').disabled = false; $('btnErase').disabled = false; $('btnConnect').textContent = 'Riconnetti';
     startBattPoll();
   }catch(e){ setState('Connessione fallita', 'err'); log('Errore: ' + e.message); }
 };
 function onDisconnect(){
   setState('Disconnesso', 'err'); log('La XIAO si è disconnessa.');
-  $('btnDownload').disabled = true; $('btnConnect').textContent = 'Connetti alla XIAO';
+  $('btnDownload').disabled = true; $('btnErase').disabled = true; $('btnConnect').textContent = 'Connetti alla XIAO';
   stopBattPoll();
 }
 async function sendCmd(ch){

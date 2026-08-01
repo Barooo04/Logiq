@@ -16,13 +16,18 @@
   body{margin:0; font-family:-apple-system,'Helvetica Neue',Arial,sans-serif; background:var(--bg); color:var(--ink);
        padding:16px; padding-bottom:40px; line-height:1.45;}
   .wrap{max-width:560px; margin:0 auto;}
+  .titlebar{display:flex; align-items:flex-start; justify-content:space-between; gap:10px;}
   h1{font-size:22px; margin:6px 0 2px; font-weight:800; letter-spacing:.3px;}
-  .sub{color:var(--dim); font-size:13px; margin:0 0 16px;}
+  .sub{color:var(--dim); font-size:13px; margin:0 0 6px;}
+  .infobtn{flex:0 0 auto; width:34px; height:34px; border-radius:50%; border:1.5px solid var(--line);
+           background:var(--card); color:var(--dim); font-size:17px; font-weight:800; font-style:italic;
+           font-family:Georgia,'Times New Roman',serif; cursor:pointer; margin-top:6px;}
+  .infobtn.active{border-color:var(--blue); color:var(--blue);}
   .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin:12px 0;}
-  button{width:100%; border:0; border-radius:12px; padding:16px; font-size:17px; font-weight:700; color:#fff;
+  button.act{width:100%; border:0; border-radius:12px; padding:16px; font-size:17px; font-weight:700; color:#fff;
          margin:8px 0; cursor:pointer; transition:opacity .15s; -webkit-appearance:none;}
-  button:active{opacity:.75;} button:disabled{opacity:.4;}
-  .b-green{background:var(--green);} .b-blue{background:var(--blue);} .b-red{background:var(--red);}
+  button.act:active{opacity:.75;} button.act:disabled{opacity:.4;}
+  .b-green{background:var(--green);} .b-blue{background:var(--blue);} .b-red{background:var(--red);} .b-grey{background:#5b6b7a;}
   .status{display:flex; align-items:center; gap:10px; font-size:14px; margin:4px 0 2px;}
   .dot{width:11px; height:11px; border-radius:50%; background:#7f8c8d; flex:0 0 auto;}
   .dot.on{background:var(--green);} .dot.busy{background:var(--amber);} .dot.err{background:var(--red);}
@@ -38,17 +43,50 @@
         border-radius:0 8px 8px 0; padding:9px 12px; margin:10px 0;}
   code{background:var(--bg); padding:1px 5px; border-radius:5px; font-size:12px;}
   ol{padding-left:20px; font-size:13.5px; color:var(--dim);} ol li{margin:4px 0;}
+  h2{font-size:15px; margin:2px 0 6px;}
+  .hrow{display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--line); font-size:13px;}
+  .hrow:last-child{border-bottom:0;}
+  .hrow input[type=checkbox]{width:20px; height:20px; flex:0 0 auto;}
+  .hrow .meta{flex:1; min-width:0;}
+  .hrow .nm{font-weight:600; word-break:break-all;}
+  .hrow .dt{color:var(--dim); font-size:11.5px;}
+  .hrow .del{flex:0 0 auto; background:transparent; border:0; color:var(--red); font-size:18px; cursor:pointer; padding:4px 8px;}
+  .empty{color:var(--dim); font-size:13px; padding:8px 4px;}
+  .toolbar{display:flex; gap:8px; margin-top:10px;}
+  .toolbar button{flex:1; padding:11px; font-size:13.5px; border-radius:10px; border:0; color:#fff; font-weight:700; cursor:pointer;}
+  .toolbar button:disabled{opacity:.4;}
+  .selrow{display:flex; align-items:center; justify-content:space-between; margin:2px 0 6px; font-size:13px; color:var(--dim);}
+  .link{color:var(--blue); background:none; border:0; font-size:13px; cursor:pointer; padding:0;}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>LOGIQ&nbsp;Downloader</h1>
-  <p class="sub">Scarica i dati dalla XIAO via Bluetooth &mdash; tutto dal telefono.</p>
+  <div class="titlebar">
+    <div>
+      <h1>LOGIQ&nbsp;Downloader</h1>
+      <p class="sub">Scarica i dati dalla XIAO via Bluetooth &mdash; tutto dal telefono.</p>
+    </div>
+    <button id="btnInfo" class="infobtn" title="Come si usa">i</button>
+  </div>
+
+  <!-- Come si usa: nascosto, si apre con la "i" -->
+  <div class="card" id="howto" style="display:none;">
+    <b style="font-size:14px;">Come si usa</b>
+    <ol>
+      <li>XIAO <b>accesa a batteria</b> (switch ON) e <b>scollegata dal Mac</b>.</li>
+      <li><b>Connetti</b> &rarr; scegli <code>LOGIQ-log</code>.</li>
+      <li><b>Scarica dati</b> &rarr; attendi la barra.</li>
+      <li>Il file finisce nello <b>Storico</b> qui sotto e puoi <b>condividerlo</b> subito.</li>
+      <li>Per liberare la memoria per la prossima sessione: <b>Azzera</b>.</li>
+      <li>Sul PC: seleziona pi&ugrave; esportazioni nello Storico &rarr; <b>Esporta ZIP</b>.</li>
+    </ol>
+    <div class="hint" style="margin-bottom:0;">Durante lo scarico, sulla XIAO il <b>LED blu lampeggia</b>; si spegne a fine download.</div>
+  </div>
 
   <div class="card">
     <div class="status"><span id="dot" class="dot"></span><span id="state">Non connesso</span></div>
-    <button id="btnConnect" class="b-green">Connetti alla XIAO</button>
-    <button id="btnDownload" class="b-blue" disabled>Scarica dati</button>
+    <button id="btnConnect" class="act b-green">Connetti alla XIAO</button>
+    <button id="btnDownload" class="act b-blue" disabled>Scarica dati</button>
     <div class="bar" id="bar"><i id="barFill"></i></div>
 
     <div class="result card" id="result" style="margin:12px 0 0;">
@@ -57,31 +95,31 @@
         <div class="stat"><b id="stDur">&ndash;</b><span>durata</span></div>
         <div class="stat"><b id="stMag">&ndash;</b><span>|a| medio</span></div>
       </div>
-      <button id="btnSave" class="b-green">Salva / Condividi CSV</button>
-      <button id="btnErase" class="b-red">Azzera memoria (E)</button>
+      <button id="btnSave" class="act b-green">Condividi questo CSV</button>
+      <button id="btnErase" class="act b-red">Azzera memoria (E)</button>
     </div>
 
     <div class="log" id="log"></div>
   </div>
 
-  <div class="hint">Durante lo scarico, sulla XIAO il <b>LED blu lampeggia</b>; si spegne a fine download.</div>
-
+  <!-- Storico esportazioni -->
   <div class="card">
-    <b style="font-size:14px;">Come si usa</b>
-    <ol>
-      <li>XIAO <b>accesa a batteria</b> (switch ON) e <b>scollegata dal Mac</b>.</li>
-      <li><b>Connetti</b> &rarr; scegli <code>LOGIQ-log</code>.</li>
-      <li><b>Scarica dati</b> &rarr; attendi la barra.</li>
-      <li><b>Salva / Condividi</b> il CSV (in File, o invialo dove vuoi).</li>
-      <li>Se vuoi liberare la memoria per la prossima sessione: <b>Azzera</b>.</li>
-    </ol>
+    <h2>Storico esportazioni</h2>
+    <div class="selrow">
+      <label><input type="checkbox" id="selAll"/> Seleziona tutto</label>
+      <button class="link" id="btnClearHist">Svuota storico</button>
+    </div>
+    <div id="hist"><div class="empty">Nessuna esportazione ancora.</div></div>
+    <div class="toolbar">
+      <button class="b-blue" id="btnZip" disabled>Esporta ZIP (0)</button>
+    </div>
   </div>
 </div>
 
 <script>
 const NUS = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-const RX  = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // scrittura telefono->scheda
-const TX  = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // notifiche scheda->telefono
+const RX  = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+const TX  = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
 const SCALE = 8.0/32768.0, GAP = 0x7FFF;
 
 let device=null, rxChar=null, txChar=null;
@@ -90,6 +128,15 @@ let lastCSV=null, lastName=null;
 const $ = id => document.getElementById(id);
 function log(m){ const el=$('log'); el.textContent += (el.textContent?'\n':'') + m; el.scrollTop = el.scrollHeight; }
 function setState(txt, cls){ $('state').textContent = txt; $('dot').className = 'dot' + (cls?(' '+cls):''); }
+function pad(v){ return String(v).padStart(2,'0'); }
+function stamp(d){ return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds()); }
+function fmtSize(n){ return n<1024? n+' B' : n<1048576? (n/1024).toFixed(0)+' KB' : (n/1048576).toFixed(1)+' MB'; }
+
+// ---------- Info toggle ----------
+$('btnInfo').onclick = () => {
+  const h = $('howto'); const show = h.style.display==='none';
+  h.style.display = show? 'block':'none'; $('btnInfo').classList.toggle('active', show);
+};
 
 if(!navigator.bluetooth){
   setState('Bluetooth non disponibile', 'err');
@@ -97,13 +144,94 @@ if(!navigator.bluetooth){
   $('btnConnect').disabled = true;
 }
 
-// ---------- Connessione ----------
+// =================== IndexedDB (storico) ===================
+let db=null;
+function idbOpen(){
+  return new Promise((res,rej)=>{
+    const r = indexedDB.open('logiq', 1);
+    r.onupgradeneeded = e => { e.target.result.createObjectStore('exports', {keyPath:'id', autoIncrement:true}); };
+    r.onsuccess = e => { db=e.target.result; res(db); };
+    r.onerror = e => rej(e.target.error);
+  });
+}
+function idbAdd(rec){ return new Promise((res,rej)=>{ const t=db.transaction('exports','readwrite'); t.objectStore('exports').add(rec); t.oncomplete=res; t.onerror=e=>rej(e.target.error); }); }
+function idbAll(){ return new Promise((res,rej)=>{ const t=db.transaction('exports','readonly'); const rq=t.objectStore('exports').getAll(); rq.onsuccess=()=>res(rq.result); rq.onerror=e=>rej(e.target.error); }); }
+function idbDel(id){ return new Promise((res,rej)=>{ const t=db.transaction('exports','readwrite'); t.objectStore('exports').delete(id); t.oncomplete=res; t.onerror=e=>rej(e.target.error); }); }
+function idbClear(){ return new Promise((res,rej)=>{ const t=db.transaction('exports','readwrite'); t.objectStore('exports').clear(); t.oncomplete=res; t.onerror=e=>rej(e.target.error); }); }
+
+async function renderHistory(){
+  const items = (await idbAll()).sort((a,b)=> b.id - a.id);
+  const box = $('hist');
+  if(!items.length){ box.innerHTML='<div class="empty">Nessuna esportazione ancora.</div>'; updateZipBtn(); return; }
+  box.innerHTML='';
+  for(const it of items){
+    const row=document.createElement('div'); row.className='hrow';
+    row.innerHTML =
+      '<input type="checkbox" class="sel" data-id="'+it.id+'"/>'+
+      '<div class="meta"><div class="nm">'+it.name+'</div>'+
+      '<div class="dt">'+new Date(it.ts).toLocaleString('it-IT')+' &middot; '+it.samples.toLocaleString('it-IT')+' campioni &middot; '+it.dur+'s &middot; '+fmtSize(it.size)+'</div></div>'+
+      '<button class="del" data-id="'+it.id+'">&#128465;</button>';
+    box.appendChild(row);
+  }
+  box.querySelectorAll('.sel').forEach(c=> c.onchange=updateZipBtn);
+  box.querySelectorAll('.del').forEach(b=> b.onclick=async ()=>{ await idbDel(+b.dataset.id); await renderHistory(); });
+  updateZipBtn();
+}
+function selectedIds(){ return [...document.querySelectorAll('.sel:checked')].map(c=>+c.dataset.id); }
+function updateZipBtn(){ const n=selectedIds().length; $('btnZip').textContent='Esporta ZIP ('+n+')'; $('btnZip').disabled = n===0; }
+
+$('selAll').onchange = e => { document.querySelectorAll('.sel').forEach(c=> c.checked=e.target.checked); updateZipBtn(); };
+$('btnClearHist').onclick = async () => { if(confirm('Svuotare tutto lo storico? (i file gia\' passati sul PC non servono piu\')')){ await idbClear(); $('selAll').checked=false; await renderHistory(); } };
+
+// =================== ZIP (store, self-contained) ===================
+const CRC_TABLE = (()=>{ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c = c&1 ? (0xEDB88320^(c>>>1)) : (c>>>1); t[n]=c>>>0; } return t; })();
+function crc32(b){ let crc=0xFFFFFFFF; for(let i=0;i<b.length;i++) crc = CRC_TABLE[(crc^b[i])&0xFF] ^ (crc>>>8); return (crc^0xFFFFFFFF)>>>0; }
+function dosDT(d){ return { time:(d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1), date:((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate() }; }
+function buildZip(files){
+  const enc=new TextEncoder(); const parts=[]; const central=[]; let offset=0; const {time,date}=dosDT(new Date());
+  for(const f of files){
+    const nameB=enc.encode(f.name); const crc=crc32(f.bytes); const size=f.bytes.length;
+    const lh=new DataView(new ArrayBuffer(30));
+    lh.setUint32(0,0x04034b50,true); lh.setUint16(4,20,true); lh.setUint16(6,0,true); lh.setUint16(8,0,true);
+    lh.setUint16(10,time,true); lh.setUint16(12,date,true); lh.setUint32(14,crc,true);
+    lh.setUint32(18,size,true); lh.setUint32(22,size,true); lh.setUint16(26,nameB.length,true); lh.setUint16(28,0,true);
+    parts.push(new Uint8Array(lh.buffer), nameB, f.bytes);
+    const ch=new DataView(new ArrayBuffer(46));
+    ch.setUint32(0,0x02014b50,true); ch.setUint16(4,20,true); ch.setUint16(6,20,true); ch.setUint16(8,0,true); ch.setUint16(10,0,true);
+    ch.setUint16(12,time,true); ch.setUint16(14,date,true); ch.setUint32(16,crc,true); ch.setUint32(20,size,true); ch.setUint32(24,size,true);
+    ch.setUint16(28,nameB.length,true); ch.setUint16(30,0,true); ch.setUint16(32,0,true); ch.setUint16(34,0,true);
+    ch.setUint16(36,0,true); ch.setUint32(38,0,true); ch.setUint32(42,offset,true);
+    central.push(new Uint8Array(ch.buffer), nameB);
+    offset += 30 + nameB.length + size;
+  }
+  let cSize=0; for(const c of central) cSize+=c.length;
+  const eocd=new DataView(new ArrayBuffer(22));
+  eocd.setUint32(0,0x06054b50,true); eocd.setUint16(4,0,true); eocd.setUint16(6,0,true);
+  eocd.setUint16(8,files.length,true); eocd.setUint16(10,files.length,true);
+  eocd.setUint32(12,cSize,true); eocd.setUint32(16,offset,true); eocd.setUint16(20,0,true);
+  return new Blob([...parts, ...central, new Uint8Array(eocd.buffer)], {type:'application/zip'});
+}
+async function shareOrDownload(blob, name){
+  const file=new File([blob], name, {type:blob.type});
+  try{ if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:name}); return; } }
+  catch(e){ /* fallback */ }
+  const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },1000);
+}
+$('btnZip').onclick = async () => {
+  const ids=selectedIds(); if(!ids.length) return;
+  const all=await idbAll(); const enc=new TextEncoder();
+  const files=all.filter(it=>ids.includes(it.id)).map(it=>({name:it.name, bytes:enc.encode(it.csv)}));
+  const blob=buildZip(files);
+  await shareOrDownload(blob, 'logiq_export_'+stamp(new Date())+'.zip');
+  log('ZIP con '+files.length+' file pronto.');
+};
+
+// =================== Connessione BLE ===================
 $('btnConnect').onclick = async () => {
   try{
     setState('Ricerca…', 'busy'); log('Cerco LOGIQ-log…');
-    device = await navigator.bluetooth.requestDevice({
-      filters:[{name:'LOGIQ-log'}], optionalServices:[NUS]
-    });
+    device = await navigator.bluetooth.requestDevice({ filters:[{name:'LOGIQ-log'}], optionalServices:[NUS] });
     device.addEventListener('gattserverdisconnected', onDisconnect);
     log('Connessione a ' + device.name + '…');
     const server = await device.gatt.connect();
@@ -114,156 +242,107 @@ $('btnConnect').onclick = async () => {
     txChar.addEventListener('characteristicvaluechanged', onNotify);
     setState('Connesso: ' + device.name, 'on');
     log('Connesso. Pronto per lo scarico.');
-    $('btnDownload').disabled = false;
-    $('btnConnect').textContent = 'Riconnetti';
-  }catch(e){
-    setState('Connessione fallita', 'err'); log('Errore: ' + e.message);
-  }
+    $('btnDownload').disabled = false; $('btnConnect').textContent = 'Riconnetti';
+  }catch(e){ setState('Connessione fallita', 'err'); log('Errore: ' + e.message); }
 };
-
 function onDisconnect(){
   setState('Disconnesso', 'err'); log('La XIAO si è disconnessa.');
   $('btnDownload').disabled = true; $('btnConnect').textContent = 'Connetti alla XIAO';
 }
-
 async function sendCmd(ch){
   const data = new TextEncoder().encode(ch);
-  try{ await rxChar.writeValueWithoutResponse(data); }
-  catch(_){ await rxChar.writeValue(data); }
+  try{ await rxChar.writeValueWithoutResponse(data); } catch(_){ await rxChar.writeValue(data); }
 }
 
-// ---------- Ricezione ----------
-let rx = { active:false, chunks:[], total:0, header:null, nBytes:0, fs:833, payloadStart:0,
-           resolve:null, reject:null, stallTimer:null };
-
+// =================== Ricezione ===================
+let rx = { active:false, chunks:[], total:0, header:null, nBytes:0, fs:833, payloadStart:0, resolve:null, reject:null, stallTimer:null };
+function concat(chunks, total){ const out=new Uint8Array(total); let o=0; for(const c of chunks){ out.set(c,o); o+=c.length; } return out; }
+function armStall(){ clearTimeout(rx.stallTimer); rx.stallTimer=setTimeout(()=>{ if(rx.active){ rx.active=false; rx.reject(new Error('nessun dato per 10s (stallo)')); } },10000); }
 function onNotify(ev){
   if(!rx.active) return;
   const bytes = new Uint8Array(ev.target.value.buffer);
-  rx.chunks.push(bytes); rx.total += bytes.length;
-  armStall();
-
-  // Parse header "# BEGIN <n> <fs>\n" finché non trovato
+  rx.chunks.push(bytes); rx.total += bytes.length; armStall();
   if(rx.header === null){
     const buf = concat(rx.chunks, rx.total);
     const nl = buf.indexOf(0x0A);
     if(nl >= 0){
       const line = new TextDecoder().decode(buf.slice(0, nl)).trim();
       if(line.startsWith('# BEGIN')){
-        const p = line.split(/\s+/);
-        rx.nBytes = parseInt(p[2],10); rx.fs = parseFloat(p[3])||833;
-        rx.header = line; rx.payloadStart = nl + 1;
-        // ricompatta tutto in un solo buffer per comodità
-        rx.chunks = [buf]; rx.total = buf.length;
-        log('Ricevo ' + rx.nBytes + ' byte (~' + (rx.nBytes/6/rx.fs).toFixed(1) + 's)…');
-        $('bar').style.display='block';
+        const p = line.split(/\s+/); rx.nBytes = parseInt(p[2],10); rx.fs = parseFloat(p[3])||833;
+        rx.header = line; rx.payloadStart = nl + 1; rx.chunks=[buf]; rx.total=buf.length;
+        log('Ricevo ' + rx.nBytes + ' byte (~' + (rx.nBytes/6/rx.fs).toFixed(1) + 's)…'); $('bar').style.display='block';
         if(rx.nBytes === 0){ finish(); return; }
-      } else {
-        log('Riga: ' + line);
-        // scarta la riga non-BEGIN e continua
-        rx.chunks = [buf.slice(nl+1)]; rx.total = rx.chunks[0].length;
-      }
+      } else { log('Riga: ' + line); rx.chunks=[buf.slice(nl+1)]; rx.total=rx.chunks[0].length; }
     }
     if(rx.header === null) return;
   }
-
   const have = rx.total - rx.payloadStart;
-  if(have >= 0){
-    const pct = Math.min(100, Math.round(have / rx.nBytes * 100));
-    $('barFill').style.width = pct + '%';
-  }
+  if(have >= 0){ $('barFill').style.width = Math.min(100, Math.round(have/rx.nBytes*100)) + '%'; }
   if(have >= rx.nBytes) finish();
 }
-
-function concat(chunks, total){
-  const out = new Uint8Array(total); let o=0;
-  for(const c of chunks){ out.set(c, o); o += c.length; }
-  return out;
-}
-function armStall(){
-  clearTimeout(rx.stallTimer);
-  rx.stallTimer = setTimeout(()=>{ if(rx.active){ rx.active=false; rx.reject(new Error('nessun dato per 10s (stallo)')); } }, 10000);
-}
-
-// ---------- Scarica ----------
-$('btnDownload').onclick = async () => {
-  $('result').style.display='none'; $('log').textContent=''; $('barFill').style.width='0%';
-  setState('Scarico…', 'busy'); log('Invio comando D…');
-  try{
-    const payload = await new Promise(async (resolve,reject)=>{
-      rx = { active:true, chunks:[], total:0, header:null, nBytes:0, fs:833, payloadStart:0, resolve, reject, stallTimer:null };
-      armStall();
-      await sendCmd('D');
-    });
-    decodeAndShow(payload, rx.fs);
-    setState('Connesso: ' + device.name, 'on');
-  }catch(e){
-    setState('Scarico fallito', 'err'); log('Errore: ' + e.message);
-    clearTimeout(rx.stallTimer);
-  }
-};
-
 function finish(){
   clearTimeout(rx.stallTimer); rx.active=false;
   const buf = concat(rx.chunks, rx.total);
   const payload = buf.slice(rx.payloadStart, rx.payloadStart + rx.nBytes);
-  $('barFill').style.width='100%';
-  log('Ricevuti ' + payload.length + '/' + rx.nBytes + ' byte.');
+  $('barFill').style.width='100%'; log('Ricevuti ' + payload.length + '/' + rx.nBytes + ' byte.');
   rx.resolve(payload);
 }
 
-// ---------- Decodifica -> CSV ----------
-function decodeAndShow(payload, fs){
+// =================== Scarica ===================
+$('btnDownload').onclick = async () => {
+  $('result').style.display='none'; $('log').textContent=''; $('barFill').style.width='0%';
+  setState('Scarico…', 'busy'); log('Invio comando D…');
+  const t0 = performance.now();
+  try{
+    const payload = await new Promise(async (resolve,reject)=>{
+      rx = { active:true, chunks:[], total:0, header:null, nBytes:0, fs:833, payloadStart:0, resolve, reject, stallTimer:null };
+      armStall(); await sendCmd('D');
+    });
+    const secs = (performance.now()-t0)/1000;
+    await decodeSaveShow(payload, rx.fs, secs);
+    setState('Connesso: ' + device.name, 'on');
+  }catch(e){ setState('Scarico fallito', 'err'); log('Errore: ' + e.message); clearTimeout(rx.stallTimer); }
+};
+
+// =================== Decodifica + salva in storico ===================
+async function decodeSaveShow(payload, fs, secs){
   const dv = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
-  let n=0, gaps=0, sumMag=0;
-  let csv = 'seconds_elapsed,x,y,z\n';
-  const lines = [];
+  let n=0, gaps=0, sumMag=0; const lines=['seconds_elapsed,x,y,z'];
   for(let off=0; off+6 <= payload.length; off+=6){
-    const x = dv.getInt16(off,   true);
-    const y = dv.getInt16(off+2, true);
-    const z = dv.getInt16(off+4, true);
+    const x=dv.getInt16(off,true), y=dv.getInt16(off+2,true), z=dv.getInt16(off+4,true);
     if(x===GAP && y===GAP && z===GAP){ gaps++; continue; }
-    const gx=x*SCALE, gy=y*SCALE, gz=z*SCALE;
-    sumMag += Math.sqrt(gx*gx+gy*gy+gz*gz);
-    lines.push((n/fs).toFixed(6)+','+gx.toFixed(5)+','+gy.toFixed(5)+','+gz.toFixed(5));
-    n++;
+    const gx=x*SCALE, gy=y*SCALE, gz=z*SCALE; sumMag += Math.sqrt(gx*gx+gy*gy+gz*gz);
+    lines.push((n/fs).toFixed(6)+','+gx.toFixed(5)+','+gy.toFixed(5)+','+gz.toFixed(5)); n++;
   }
-  csv += lines.join('\n') + '\n';
-  lastCSV = csv;
-  const ts = new Date();
-  const pad = v => String(v).padStart(2,'0');
-  lastName = 'logiq_' + ts.getFullYear()+pad(ts.getMonth()+1)+pad(ts.getDate())+'_'+pad(ts.getHours())+pad(ts.getMinutes())+pad(ts.getSeconds())+'.csv';
+  const csv = lines.join('\n')+'\n';
+  const now = new Date();
+  lastCSV = csv; lastName = 'logiq_'+stamp(now)+'.csv';
 
   $('stSamples').textContent = n.toLocaleString('it-IT');
   $('stDur').textContent = (n/fs).toFixed(1)+'s';
   $('stMag').textContent = n? (sumMag/n).toFixed(3)+'g' : '–';
   $('result').style.display='block';
-  log('CSV pronto: ' + n + ' campioni, ' + (n/fs).toFixed(1) + 's' + (gaps?(' , '+gaps+' gap'):'') + '.');
+  const rate = secs>0? (payload.length/1024/secs).toFixed(1) : '?';
+  log('CSV pronto: '+n+' campioni, '+(n/fs).toFixed(1)+'s'+(gaps?(' , '+gaps+' gap'):'')+' · '+rate+' KB/s.');
+
+  try{
+    await idbAdd({ name:lastName, ts:now.toISOString(), samples:n, dur:(n/fs).toFixed(1), size:csv.length, csv });
+    await renderHistory(); log('Salvato nello storico.');
+  }catch(e){ log('Storico non salvato: '+e.message); }
 }
 
-// ---------- Salva / Condividi ----------
-$('btnSave').onclick = async () => {
-  if(!lastCSV) return;
-  const blob = new Blob([lastCSV], {type:'text/csv'});
-  const file = new File([blob], lastName, {type:'text/csv'});
-  try{
-    if(navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({files:[file], title:lastName});
-      log('Condiviso: ' + lastName);
-      return;
-    }
-  }catch(e){ log('Condivisione annullata/non riuscita, provo il download.'); }
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download=lastName; document.body.appendChild(a); a.click();
-  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 1000);
-  log('Salvato: ' + lastName);
-};
+// Condividi il CSV appena scaricato
+$('btnSave').onclick = async () => { if(lastCSV) await shareOrDownload(new Blob([lastCSV],{type:'text/csv'}), lastName); };
 
-// ---------- Azzera ----------
+// Azzera memoria della scheda
 $('btnErase').onclick = async () => {
-  if(!confirm('Azzerare la memoria della XIAO? I dati non ancora salvati andranno persi.')) return;
+  if(!confirm('Azzerare la memoria della XIAO? I dati non ancora scaricati andranno persi.')) return;
   try{ await sendCmd('E'); log('Comando E inviato: memoria azzerata, la scheda riparte a registrare.'); }
   catch(e){ log('Errore azzeramento: ' + e.message); }
 };
+
+// Avvio: apri il DB e mostra lo storico
+idbOpen().then(renderHistory).catch(e=> log('Storico non disponibile: '+e.message));
 </script>
 </body>
 </html>

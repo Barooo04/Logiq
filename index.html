@@ -50,6 +50,7 @@
   .hrow .meta{flex:1; min-width:0;}
   .hrow .nm{font-weight:600; word-break:break-all;}
   .hrow .dt{color:var(--dim); font-size:11.5px;}
+  .hrow .ren{flex:0 0 auto; background:transparent; border:0; color:var(--blue); cursor:pointer; padding:4px 6px;}
   .hrow .del{flex:0 0 auto; background:transparent; border:0; color:var(--red); font-size:18px; cursor:pointer; padding:4px 8px;}
   .empty{color:var(--dim); font-size:13px; padding:8px 4px;}
   .toolbar{display:flex; gap:8px; margin-top:10px;}
@@ -160,6 +161,7 @@ function idbOpen(){
 function idbAdd(rec){ return new Promise((res,rej)=>{ const t=db.transaction('exports','readwrite'); t.objectStore('exports').add(rec); t.oncomplete=res; t.onerror=e=>rej(e.target.error); }); }
 function idbAll(){ return new Promise((res,rej)=>{ const t=db.transaction('exports','readonly'); const rq=t.objectStore('exports').getAll(); rq.onsuccess=()=>res(rq.result); rq.onerror=e=>rej(e.target.error); }); }
 function idbDel(id){ return new Promise((res,rej)=>{ const t=db.transaction('exports','readwrite'); t.objectStore('exports').delete(id); t.oncomplete=res; t.onerror=e=>rej(e.target.error); }); }
+function idbPut(rec){ return new Promise((res,rej)=>{ const t=db.transaction('exports','readwrite'); t.objectStore('exports').put(rec); t.oncomplete=res; t.onerror=e=>rej(e.target.error); }); }
 function idbClear(){ return new Promise((res,rej)=>{ const t=db.transaction('exports','readwrite'); t.objectStore('exports').clear(); t.oncomplete=res; t.onerror=e=>rej(e.target.error); }); }
 
 async function renderHistory(){
@@ -173,12 +175,25 @@ async function renderHistory(){
       '<input type="checkbox" class="sel" data-id="'+it.id+'"/>'+
       '<div class="meta"><div class="nm">'+it.name+'</div>'+
       '<div class="dt">'+new Date(it.ts).toLocaleString('it-IT')+' &middot; '+it.samples.toLocaleString('it-IT')+' campioni &middot; '+it.dur+'s &middot; '+fmtSize(it.size)+'</div></div>'+
+      '<button class="ren" data-id="'+it.id+'" title="Rinomina"><svg class="tico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>'+
       '<button class="del" data-id="'+it.id+'" title="Elimina"><svg class="tico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M6 6l1 14a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-14"/><path d="M10 11v6M14 11v6"/></svg></button>';
     box.appendChild(row);
   }
   box.querySelectorAll('.sel').forEach(c=> c.onchange=updateZipBtn);
   box.querySelectorAll('.del').forEach(b=> b.onclick=async ()=>{ await idbDel(+b.dataset.id); await renderHistory(); });
+  box.querySelectorAll('.ren').forEach(b=> b.onclick=()=> renameExport(+b.dataset.id));
   updateZipBtn();
+}
+async function renameExport(id){
+  const rec = (await idbAll()).find(r=> r.id===id); if(!rec) return;
+  const cur = rec.name.replace(/\.csv$/i,'');
+  const inp = prompt('Nuovo nome per questa esportazione:', cur);
+  if(inp===null) return;                       // annullato
+  let nm = inp.trim(); if(!nm) return;         // vuoto: lascio com'era
+  if(!/\.csv$/i.test(nm)) nm += '.csv';
+  rec.name = nm;
+  try{ await idbPut(rec); await renderHistory(); log('Rinominato in '+nm); }
+  catch(e){ log('Rinomina non riuscita: '+e.message); }
 }
 function selectedIds(){ return [...document.querySelectorAll('.sel:checked')].map(c=>+c.dataset.id); }
 function updateZipBtn(){ const n=selectedIds().length; $('btnZip').textContent='Esporta ZIP ('+n+')'; $('btnZip').disabled = n===0; }
